@@ -1,0 +1,50 @@
+name: Build and Test (Windows 11 x64)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up MSVC and Dependencies
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Install Nana Library
+      run: |
+        git clone --depth=1 https://github.com/cnjinhao/nana.git C:/nana
+
+    - name: Build Project
+      run: |
+        mkdir build
+        cd build
+        cmake -G "Visual Studio 17 2022" -A x64 -DNANA_DIR="C:/nana" ..
+        cmake --build . --config Release
+
+    - name: Run Unit Tests
+      run: |
+        cd build/Release
+        ctest --output-on-failure
+
+    - name: Zip Build Artifacts
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-release
+        path: build/Release/*.exe
+
+    - name: Delete Temporary Resources
+      if: always()
+      run: |
+        rm -rf build C:/nana
